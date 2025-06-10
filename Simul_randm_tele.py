@@ -13,7 +13,7 @@ dt = 1e-2
 N_step  = int((t_f - t0)/dt) 
 
 u = 0.4
-Tx = 5e-1       #change les deux variances de la même façon
+Tx = 1e-1       #change les deux variances de la même façon
 Ty = 1e-1
 gamma = 1e-1 # N.s.m-1 coeff frottement
 

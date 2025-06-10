@@ -53,13 +53,13 @@ def omega(X, N_step, dt):
     print(omega)
     P_omega = np.copy(omega)/len(omega)
 
-    plt.figure()
-    plt.hist(P_omega)
-    plt.show()
+    # plt.figure()
+    # plt.hist(P_omega)
+    # plt.show()
 
-    plt.figure()
-    plt.plot(np.linspace(10*dt,dt*N_step, len(P_omega)), P_omega)
-    plt.show()
+    # plt.figure()
+    # plt.plot(np.linspace(10*dt,dt*N_step, len(P_omega)), P_omega)
+    # plt.show()
     return omega, np.mean(omega), P_omega
 
 def coo_h(X, t0,t_f,dt):
