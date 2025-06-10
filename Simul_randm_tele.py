@@ -4,28 +4,26 @@ import time
 from scipy.special import iv
 from numba import jit
 import pandas as pd
-
 import acces_fnc
 
 t_f = 100
 t0 = 0
-dt = 1e-2
+dt = 2e-3
 N_step  = int((t_f - t0)/dt) 
 
 u = 0.4
-Tx = 1e-1       #change les deux variances de la même façon
-Ty = 1e-1
-gamma = 1e-1 # N.s.m-1 coeff frottement
+Fx = 1       #change les deux variances de la même façon
+Fy = 3
+gamma = 1e-1    # N.s.m-1 coeff frottement
 
 
-Tau_RT_x = 1e-1
-Tau_RT_y = 2e-1   #change mes deux de la même façon
+Tau_RT_x = 5e-1
+Tau_RT_y = 5e-1  #change les deux de la même façon
 
-N_rep = 10
+N_rep = 19
 
-#@jit
 
-def traj_randm(u=u, Tx=Tx, Ty=Ty, N=N_step):
+def init_traj_randm(u=u, Fx=Fx, Fy=Fy, N=N_step):
     
     #def Matrice dynamique A et position X:
     A = np.array([[1, -u],
@@ -33,21 +31,24 @@ def traj_randm(u=u, Tx=Tx, Ty=Ty, N=N_step):
     X = np.zeros((2, N))
     
     #initialisation
-    X[1,0] = 1/2
-
-
+    #X[1,0] = 1/2
     #création de la force:
-    XI = acces_fnc.create_force(N, dt, Tau_RT_x, Tau_RT_y, Tx, Ty)
+    XI = acces_fnc.create_force(N, dt, Tau_RT_x, Tau_RT_y, Fx, Fy)
     #print(' Mean Force',np.mean(XI, axis=1) )
 
+    return A,X,XI
 
-   
+
+@jit(nopython=True)
+def dyna(A,X,XI,N=N_step, dt=dt):
     #Propagation de la dynamique
-    for k in range(1,N_step):
+    for k in range(1,N):
         U = np.identity(2)- A*dt
-        X[:,k] = X[:,k-1] - X[:,k-1]*dt  + XI[:,k-1] 
-        
+        X[:,k] = U@X[:,k-1] + XI[:,k-1]*dt   
 
+    return X
+        
+def Analyze(X,XI,N=N_step, Fx=Fx, Fy=Fy, Tau_RT_X = Tau_RT_x):
     #Affiche les coordonnées horaires
     #acces_fnc.coo_h(X, t0,t_f,dt)
 
@@ -55,30 +56,67 @@ def traj_randm(u=u, Tx=Tx, Ty=Ty, N=N_step):
     #acces_fnc.traj(X, u)
 
     #Affiche la force
-    #acces_fnc.force(XI, t0,t_f,dt, Tx, Tau_RT_x)
-
+    #acces_fnc.force(XI, t0,t_f,dt, Fx, Tau_RT_x)
 
     #df = pd.DataFrame(X)
     #df.to_csv('your_file_name.csv', index=False)
 
     #Calcule la vitesse angulaire
-    omega ,mean_omg, P_omega = acces_fnc.omega(X, N_step, dt) 
+    omega ,mean_omg, P_omega = acces_fnc.omega(X, N, dt) 
     print('mean_omg',mean_omg, 'rad/s')
 
-
     #print(X)
-    return X, P_omega, mean_omg
+    return P_omega, mean_omg, omega
 
-Res = np.zeros((1,N_rep))
+
+
+#comparaison à la diffusion
+
+
+def exact(t,T,tau):
+    return 2*T*(t-tau*(1-np.exp(-t/tau)))
+
+timeT = time.time()
+r2 = np.zeros((N_rep,N_step))
+X_f = np.zeros((N_rep,N_step))
+OMG = np.zeros((N_rep,N_step))
 
 for incr in range(N_rep):
+    A,X,XI = init_traj_randm()
+    X = dyna(A,X,XI)
+    P_omega, mean_omg, omega = Analyze(X,XI)
 
-    X, P_omega, mean_omg = traj_randm()
-    Res[0,incr] = mean_omg
+    r2[incr,:] = np.power(X[0,:],2)+ np.power(X[1,:],2)
+    X_f[incr,:] = X[0,:]
+    OMG[incr,:len(omega)] = omega
+    
+r2_mean = np.mean(r2, axis=0)
+X_mean = np.mean(X_f,axis=0)
+Mean_OMG = np.mean(OMG, axis=0)
+
+print('Took',time.time()-timeT,'s')
 
 plt.figure()
-plt.hist(Res)
+plt.plot(np.linspace(0,N_step*dt,N_step),Mean_OMG)
+plt.ylabel("$ \Omega $")
+plt.xlabel('Time t')
 plt.show()
+
+plt.figure()
+#plt.plot(np.linspace(0,N_step*dt,N_step),exact(np.linspace(0,N_step*dt,N_step),T= Tau_RT_x* (Fx)**2 , tau=Tau_RT_x))
+plt.plot(np.linspace(0,N_step*dt,N_step),r2_mean)
+plt.ylabel("$<r^2(t)>$")
+plt.xlabel('Time t')
+plt.show()
+
+plt.figure()
+plt.plot(np.linspace(0,N_step*dt,N_step),X_mean)
+plt.title('x moyen')
+plt.show()
+
+
+
+
 
     # r2=r[1000:n2,0]**2+r[1000:n2,1]**2
     # r2b=(r[1000:n2,0]**2-r[1000:n2,1]**2)

@@ -11,3 +11,7 @@ N_iso = 5 # nombre d'isopotentielles à tracer
 print(np.array([[2,2],[2,3]])[1,0])
 
 print('é', np.array([  2*np.random.binomial(1,1/2) -1 for _ in range(10)]))
+
+
+print(np.random.randint(2,size=1) )
+print(5.2/1.6)
