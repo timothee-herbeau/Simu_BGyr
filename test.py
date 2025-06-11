@@ -15,3 +15,8 @@ print('é', np.array([  2*np.random.binomial(1,1/2) -1 for _ in range(10)]))
 
 print(np.random.randint(2,size=1) )
 print(5.2/1.6)
+
+
+print(np.array([[0,1,2],[3,4,5]]),np.power(np.array([[0,1,2],[3,4,5]]), 2)   )
+
+print(np.array([[0,1,2],[3,4,5]]), np.mean(np.array([[0,1,2],[3,4,5]]), axis=0))

@@ -5,22 +5,23 @@ from scipy.special import iv
 from numba import jit
 import pandas as pd
 import acces_fnc
+#from sklearn.metrics import mean_squared_error
 
-t_f = 100
+t_f = 30
 t0 = 0
-dt = 2e-3
+dt = 5e-3
 N_step  = int((t_f - t0)/dt) 
 
 u = 0.4
 Fx = 1       #change les deux variances de la même façon
-Fy = 3
+Fy = 1
 gamma = 1e-1    # N.s.m-1 coeff frottement
 
 
-Tau_RT_x = 5e-1
-Tau_RT_y = 5e-1  #change les deux de la même façon
+Tau_RT_x = 1e-1
+Tau_RT_y = 1e-1  #change les deux de la même façon
 
-N_rep = 19
+N_traj = 5000
 
 
 def init_traj_randm(u=u, Fx=Fx, Fy=Fy, N=N_step):
@@ -32,8 +33,9 @@ def init_traj_randm(u=u, Fx=Fx, Fy=Fy, N=N_step):
     
     #initialisation
     #X[1,0] = 1/2
+
     #création de la force:
-    XI = acces_fnc.create_force(N, dt, Tau_RT_x, Tau_RT_y, Fx, Fy)
+    XI = acces_fnc.create_force_2(N, dt, Tau_RT_x, Tau_RT_y, Fx, Fy)
     #print(' Mean Force',np.mean(XI, axis=1) )
 
     return A,X,XI
@@ -44,10 +46,10 @@ def dyna(A,X,XI,N=N_step, dt=dt):
     #Propagation de la dynamique
     for k in range(1,N):
         U = np.identity(2)- A*dt
-        X[:,k] = U@X[:,k-1] + XI[:,k-1]*dt   
-
+        X[:,k] =   X[:,k-1]   + XI[:,k-1]*dt      # OU X[:,k-1]* (1-dt) - dt*u *X[::-1,k-1] + XI[:,k-1]*dt   #plus rapide pour numba 
     return X
         
+
 def Analyze(X,XI,N=N_step, Fx=Fx, Fy=Fy, Tau_RT_X = Tau_RT_x):
     #Affiche les coordonnées horaires
     #acces_fnc.coo_h(X, t0,t_f,dt)
@@ -63,10 +65,13 @@ def Analyze(X,XI,N=N_step, Fx=Fx, Fy=Fy, Tau_RT_X = Tau_RT_x):
 
     #Calcule la vitesse angulaire
     omega ,mean_omg, P_omega = acces_fnc.omega(X, N, dt) 
-    print('mean_omg',mean_omg, 'rad/s')
+    #print('mean_omg',mean_omg, 'rad/s')
 
     #print(X)
     return P_omega, mean_omg, omega
+
+
+
 
 
 
@@ -77,42 +82,78 @@ def exact(t,T,tau):
     return 2*T*(t-tau*(1-np.exp(-t/tau)))
 
 timeT = time.time()
-r2 = np.zeros((N_rep,N_step))
-X_f = np.zeros((N_rep,N_step))
-OMG = np.zeros((N_rep,N_step))
-
-for incr in range(N_rep):
+Force = np.zeros((N_traj))
+X2 = np.zeros((N_traj,N_step))
+X_f = np.zeros((N_traj,N_step))
+OMG = np.zeros((N_traj,N_step))
+tab_mean_omega = np.zeros((N_traj))
+for incr in range(N_traj):
     A,X,XI = init_traj_randm()
     X = dyna(A,X,XI)
     P_omega, mean_omg, omega = Analyze(X,XI)
+    Force[incr] = np.mean(XI[0,:])
 
-    r2[incr,:] = np.power(X[0,:],2)+ np.power(X[1,:],2)
+    X2[incr,:] = 0.5*(np.power(X[0,:],2)+ np.power(X[1,:],2))
+
     X_f[incr,:] = X[0,:]
     OMG[incr,:len(omega)] = omega
+    tab_mean_omega[incr] = mean_omg 
     
-r2_mean = np.mean(r2, axis=0)
+
+X2_mean = np.mean(X2, axis=0)
 X_mean = np.mean(X_f,axis=0)
-Mean_OMG = np.mean(OMG, axis=0)
+#Mean_OMG = np.mean(OMG, axis=0)
 
 print('Took',time.time()-timeT,'s')
 
-plt.figure()
-plt.plot(np.linspace(0,N_step*dt,N_step),Mean_OMG)
-plt.ylabel("$ \Omega $")
-plt.xlabel('Time t')
-plt.show()
+
+# plt.figure()
+# plt.plot(np.linspace(0,N_step*dt,N_step),Mean_OMG)
+# plt.ylabel("$ \Omega $")
+# plt.xlabel('Time t')
+# plt.show()
+
+# plt.figure()
+# plt.hist(tab_mean_omega)
+# plt.show()
 
 plt.figure()
-#plt.plot(np.linspace(0,N_step*dt,N_step),exact(np.linspace(0,N_step*dt,N_step),T= Tau_RT_x* (Fx)**2 , tau=Tau_RT_x))
-plt.plot(np.linspace(0,N_step*dt,N_step),r2_mean)
-plt.ylabel("$<r^2(t)>$")
+plt.plot(np.linspace(dt,N_step*dt,N_step-1),exact(np.linspace(dt,N_step*dt,N_step-1), T= Tau_RT_x* (Fx)**2 , tau=Tau_RT_x), label='Analytic <x^2(t)>')
+plt.plot(np.linspace(0,N_step*dt,N_step),X2_mean, label='Numerical <x^2(t)>')
+Relativ_err = np.abs(np.mean((X2_mean[1:] - exact(np.linspace(dt,N_step*dt,N_step-1), T= Tau_RT_x* (Fx)**2 , tau=Tau_RT_x) )/ exact(np.linspace(dt,N_step*dt,N_step-1), T= Tau_RT_x* (Fx)**2 , tau=Tau_RT_x) ))
+plt.ylabel("$<x^2(t)>$")
 plt.xlabel('Time t')
+plt.legend()
+plt.title(f'Relative error for numerical vs analytical solution is : {np.round(100*Relativ_err,1)} %')
 plt.show()
 
+
 plt.figure()
-plt.plot(np.linspace(0,N_step*dt,N_step),X_mean)
-plt.title('x moyen')
+plt.loglog(np.linspace(1*dt,N_step*dt,N_step-1),exact(np.linspace(1*dt,N_step*dt,N_step-1), T= Tau_RT_x* (Fx)**2 , tau=Tau_RT_x), label='Analytic <r^2(t)>')
+plt.loglog(np.linspace(1*dt,N_step*dt,N_step-1),X2_mean[1:], label='Numerical <x^2(t)>')
+Relativ_err = np.abs(np.mean((X2_mean[10:] - exact(np.linspace(10*dt,N_step*dt,N_step-10), T= Tau_RT_x* (Fx)**2 , tau=Tau_RT_x) )/ exact(np.linspace(dt*10,N_step*dt,N_step-10), T= Tau_RT_x* (Fx)**2 , tau=Tau_RT_x) ))
+plt.ylabel("$<x^2(t)>$")
+plt.xlabel('Time t')
+plt.legend()
+plt.title(f'Relative error for numerical vs analytical solution is : {np.round(100*Relativ_err,1)} %')
 plt.show()
+
+
+
+plt.figure()
+plt.plot(np.linspace(0,N_step*dt,N_step),X_mean, label='Analytic <x^2(t)>')
+plt.show()
+print('moyen', np.mean(X_mean))
+print('force mean tot', np.mean(Force))
+print(X2_mean[-10:],exact(np.linspace(0,N_step*dt,N_step), T= Tau_RT_x* (Fx)**2 , tau=Tau_RT_x)[-10:] )
+
+
+
+
+# plt.figure()
+# plt.plot(np.linspace(0,N_step*dt,N_step),X_mean)
+# plt.title('x moyen')
+# plt.show()
 
 
 

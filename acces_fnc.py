@@ -34,11 +34,16 @@ def create_force_2(N, dt, Tau_RT_x, Tau_RT_y, Fx, Fy):
 def create_force(N, dt, Tau_RT_x, Tau_RT_y, Fx, Fy):
     XI = np.zeros((2,N))
     i=0
+    direction_x = 2*np.random.randint(2,size=N) -1
     while i <= N:
-        tau_x, direction_x = np.random.poisson(Tau_RT_x/dt), 2*np.random.randint(2,size=1) -1
-        dnx = int(tau_x)
-        XI[0,i: i + min(dnx,N-i)] = direction_x * Fx # np.sqrt(8*Tx/Tau_RT_x) *dt
+        tau_x = np.random.poisson(int(Tau_RT_x/dt))
+        direction_xi = 2*np.random.randint(2,size=1) -1
+        dnx =  int(tau_x)
+        XI[0,i: i + min(dnx,N-i)] = direction_xi * Fx    # np.sqrt(8*Tx/Tau_RT_x) *dt
+        #print(i,dnx, direction_x * Fx)
         i += dnx
+
+    #print('Force moy',np.mean(XI[0,:]), np.mean(direction_x))
 
     j=0
     while j <= N:
@@ -71,7 +76,7 @@ def autocorr(x):
 
 def omega(X, N_step, dt):
      #Calcul deltatheta et Omega
-    deltatheta = np.copy(np.diff(   np.arctan(np.copy(X[1,10:N_step]),np.copy(X[0,10:N_step]))  ) )
+    deltatheta = np.copy(np.diff(   np.arctan2(np.copy(X[1,:]),np.copy(X[0,:]))  ) )
     #deltatheta = np.remainder(deltatheta, np.pi)
     deltatheta[deltatheta<-np.pi] += 2*np.pi
     deltatheta[deltatheta>np.pi] += -2*np.pi
@@ -86,7 +91,7 @@ def omega(X, N_step, dt):
     # plt.figure()
     # plt.plot(np.linspace(10*dt,dt*N_step, len(P_omega)), P_omega)
     # plt.show()
-    return omega, np.mean(omega), P_omega
+    return omega, np.mean(omega[10:]), P_omega
 
 def coo_h(X, t0,t_f,dt):
     plt.figure()
