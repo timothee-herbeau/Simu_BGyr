@@ -5,8 +5,8 @@ from scipy.special import iv
 from numba import jit
 import pandas as pd
 
-
-def create_force_2(N, dt, Tau_RT_x, Tau_RT_y, Fx, Fy):
+#Version de Pascal générant la force, généralisée à 2D
+def create_force_2(N, dt, Tau_RT_x, Tau_RT_y, Fx, Fy): 
     XI = np.zeros((2,N))
     bino,temps=2*np.random.randint(2, size=int(1.2*N*dt/Tau_RT_x))-1 ,np.random.exponential(scale=Tau_RT_x,size=int(1.2*N*dt/Tau_RT_x))
     binoy,tempsy=2*np.random.randint(2, size=int(1.2*N*dt/Tau_RT_y))-1 ,np.random.exponential(scale=Tau_RT_y,size=int(1.2*N*dt/Tau_RT_y))
@@ -42,9 +42,7 @@ def create_force(N, dt, Tau_RT_x, Tau_RT_y, Fx, Fy):
         XI[0,i: i + min(dnx,N-i)] = direction_xi * Fx    # np.sqrt(8*Tx/Tau_RT_x) *dt
         #print(i,dnx, direction_x * Fx)
         i += dnx
-
     #print('Force moy',np.mean(XI[0,:]), np.mean(direction_x))
-
     j=0
     while j <= N:
         tau_y, direction_y = np.random.poisson(Tau_RT_y/dt), 2*np.random.randint(2,size=1)-1
@@ -53,7 +51,8 @@ def create_force(N, dt, Tau_RT_x, Tau_RT_y, Fx, Fy):
         j += dny
     return XI
 
-def isop(R_max,us, nb = 5):
+#plot les isopotentielles
+def isop(R_max,us, nb = 5): 
     V0 = np.linspace(0.2,R_max, nb)
     dthet = 1e-2
     J_f = int(2*np.pi/dthet)
@@ -73,9 +72,8 @@ def autocorr(x):
     result = np.correlate(x, x, mode='same')
     return result[result.size // 2:]
 
-
+#Calcul deltatheta et Omega
 def omega(X, N_step, dt):
-     #Calcul deltatheta et Omega
     deltatheta = np.copy(np.diff(   np.arctan2(np.copy(X[1,:]),np.copy(X[0,:]))  ) )
     #deltatheta = np.remainder(deltatheta, np.pi)
     deltatheta[deltatheta<-np.pi] += 2*np.pi

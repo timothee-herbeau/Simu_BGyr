@@ -27,7 +27,7 @@ N_traj = 1000
 def init_traj_randm(u=u, Fx=Fx, Fy=Fy, N=N_step):
     X = np.zeros((2, N))
     #création de la force:
-    XI = acces_fnc.create_force_2(N, dt, Tau_RT_x, Tau_RT_y, Fx, Fy)
+    XI = acces_fnc.create_force_2(N, dt, Tau_RT_x, Tau_RT_y, Fx, Fy)    #Le _2 indique que j'utilise ta méthode
     return X,XI
 
 
@@ -68,7 +68,7 @@ def Analyze(X,XI,N=N_step, Fx=Fx, Fy=Fy, Tau_RT_X = Tau_RT_x):
 def L(X2, Y2,u):
     return u*(X2 - Y2)
 
-def A(u, tau):
+def A(u, tau):  #utile pour le second moment de la position en régime stationnaire
     return (2 - u**2 + tau)/(2*(1-u**2)*(1+2*tau + (1-u**2)*tau**2))
 def B(u,tau):
     return u**2 * (1 + tau)/(2*(1-u**2)*(1+2*tau + (1-u**2)*tau**2))
@@ -83,8 +83,8 @@ X2 = np.zeros((N_traj,N_step))
 Y2 = np.zeros((N_traj,N_step))
 
 
-OMG = np.zeros((N_traj,N_step-1))
-tab_mean_omega = np.zeros((N_traj))
+OMG = np.zeros((N_traj,N_step-1))       #regroupe les valeurs instantanée des Omegas pour chaque trajectoire
+tab_mean_omega = np.zeros((N_traj))     #regroupe le oméga moyen pour chaque trajectoire
 
 
 L_analytic =  np.zeros((N_traj,N_step))
@@ -98,9 +98,9 @@ for incr in range(N_traj):
     P_omega, mean_omg, omega = Analyze(X,XI)
     X2[incr,:] = np.power(X[0,:],2)
     Y2[incr,:] = np.power(X[1,:],2)
-    L_numeric2[incr,:] = np.multiply(omega,X2[incr,:-1]+Y2[incr,:-1] )
-    L_analytic[incr,:] = L(X2[incr,:], Y2[incr,:],u)
-    #OMG[incr,:] = omega[ int(N_step - 2/dt) : ]
+    L_numeric2[incr,:] = np.multiply(omega,X2[incr,:-1]+Y2[incr,:-1] )      #L = omega * r^2
+    L_analytic[incr,:] = L(X2[incr,:], Y2[incr,:],u)                        #D'après les notes de Gleb
+
     OMG[incr,:] = omega
     tab_mean_omega[incr] = mean_omg 
     
@@ -133,7 +133,6 @@ plt.show()
 
 
 #variance analytic vs numérique
-
 plt.figure()
 plt.title('X2 distribution')
 plt.hist(np.reshape(X2[:,2000:],(-1)), label='numeric', alpha=0.6, bins=60, density = True)
@@ -143,7 +142,6 @@ plt.show()
 
 
 ##L analytic vs numérique
-
 plt.figure()
 plt.title('Analytic vs numeric L')
 plt.hist(np.reshape(L_numeric,(-1)), label='numeric', alpha=0.6, bins=60)
