@@ -5,24 +5,24 @@ from scipy.special import iv
 from numba import jit
 import pandas as pd
 import acces_fnc
-#from sklearn.metrics import mean_squared_error
+
 
 t_f = 50
 t0 = 0
 dt = 2e-3
 N_step  = int((t_f - t0)/dt) 
 
-u = 0.4
+u = 0.3
 Fx = 1       
-Fy = 1
+Fy = 2
 
-Tau_RT_x = 5e-1
+Tau_RT_x = 9e-1
 Tau_RT_y = 1e-1  
 
 Tx = Fx**2 * Tau_RT_x
 Ty = Fy**2 * Tau_RT_y
 
-N_traj = 1000
+N_traj = 2000
 
 def init_traj_randm(u=u, Fx=Fx, Fy=Fy, N=N_step):
     X = np.zeros((2, N))
@@ -81,11 +81,9 @@ timeT = time.time()
 
 X2 = np.zeros((N_traj,N_step))
 Y2 = np.zeros((N_traj,N_step))
-
-
+OM = np.zeros((N_traj,N_step,2))
 OMG = np.zeros((N_traj,N_step-1))       #regroupe les valeurs instantanée des Omegas pour chaque trajectoire
 tab_mean_omega = np.zeros((N_traj))     #regroupe le oméga moyen pour chaque trajectoire
-
 
 L_analytic =  np.zeros((N_traj,N_step))
 L_numeric = np.zeros((N_traj,N_step-1))
@@ -94,7 +92,7 @@ L_numeric2 = np.zeros((N_traj,N_step-1))
 for incr in range(N_traj):
     X,XI = init_traj_randm()
     X, L_numeric[incr,:] = dyna(X,XI)
-
+    OM[incr,:,0], OM[incr,:,1] = X[0,:], X[1,:]
     P_omega, mean_omg, omega = Analyze(X,XI)
     X2[incr,:] = np.power(X[0,:],2)
     Y2[incr,:] = np.power(X[1,:],2)
@@ -110,15 +108,17 @@ X2_analy = Var_analy(u, Tau_RT_x, Tau_RT_y, Tx, Ty)[0]
 Y2_analy = Var_analy(u, Tau_RT_x, Tau_RT_y, Tx, Ty)[1]
 R2_anal = X2_analy + Y2_analy
 
+L_analytic2 = np.array([u*(1+1/Tau_RT_x)*(Fx**2 - Fy**2)/((1 + 1/Tau_RT_x - u)*(1+ 1/Tau_RT_x + u)) ])
+
 
 print('Took',time.time()-timeT,'s')
 
 
-plt.figure()
-plt.plot(np.linspace(0,dt*N_step,N_step), r2_mean)
-plt.plot(np.linspace(0,dt*N_step,N_step), R2_anal*np.ones_like(r2_mean))
-plt.title('r2')
-plt.show()
+# plt.figure()
+# plt.plot(np.linspace(0,dt*N_step,N_step), r2_mean)
+# plt.plot(np.linspace(0,dt*N_step,N_step), R2_anal*np.ones_like(r2_mean))
+# plt.title('r2')
+# plt.show()
 
 # plt.figure()
 # plt.plot(np.linspace(0,dt*(N_step-11),N_step-11), np.mean(OMG[:,10:],axis=0))
@@ -132,31 +132,41 @@ plt.show()
 # print('Mean Omega',np.mean(tab_mean_omega))
 
 
-#variance analytic vs numérique
-plt.figure()
-plt.title('X2 distribution')
-plt.hist(np.reshape(X2[:,2000:],(-1)), label='numeric', alpha=0.6, bins=60, density = True)
-plt.hist(X2_analy, label='numeric', alpha=0.6, bins=60, density=True)
-plt.hist(np.mean(np.reshape(X2[:,2000:],(-1))), label='numeric', alpha=0.6, bins=60, density=True)
-plt.show()
-
-
-##L analytic vs numérique
-plt.figure()
-plt.title('Analytic vs numeric L')
-plt.hist(np.reshape(L_numeric,(-1)), label='numeric', alpha=0.6, bins=60)
-plt.hist(np.reshape(L_analytic,(-1)), label='analytic',alpha=0.7, bins=60) 
-plt.hist(np.reshape(L_numeric2,(-1)), label='numeric2',alpha=0.6, bins=60) 
-plt.legend()
-plt.show()
-
-
-
+# #variance analytic vs numérique
 # plt.figure()
-# plt.title('Analytic L')
-# plt.hist(np.mean(L_numeric,axis=0), label='numeric', alpha=0.6, bins=2, density=True)
-# plt.hist(np.mean(L_analytic,axis=0), label='analytic',alpha=0.6, bins=20, density=True)
-# plt.hist(np.mean(L_numeric2,axis=0), label='num2',alpha=0.6, bins=20,density=True)
+# plt.title('R2 distribution')
+# plt.hist(np.reshape(X2[:,2000:] + Y2[:,2000:],(-1)), label='numeric', alpha=0.6, bins=60, density = 1)
+# plt.hist(X2_analy + Y2_analy, label='analytic', alpha=0.6, bins=60, density=0)
+# plt.hist(np.mean(np.reshape(X2[:,2000:]+ Y2[:,2000:],(-1))), label='moyenne numérique', alpha=0.6, bins=60, density=0)
 # plt.legend()
 # plt.show()
 
+
+# ##L analytic vs numérique
+# plt.figure()
+# plt.title('Analytic vs numeric L')
+# plt.hist(np.reshape(L_numeric,(-1)), label='numeric', alpha=0.6, bins=40, density=1)
+# plt.hist(np.reshape(L_analytic,(-1)), label='analytic',alpha=0.7, bins=40, density=1)#) 
+# plt.hist(np.reshape(L_analytic2,(-1)), label='analytic2',alpha=0.7, bins=30, density=0)#) 
+# plt.hist(np.reshape(L_numeric2,(-1)), label='numeric2',alpha=0.6, bins=60, density=1)#) 
+# plt.legend()
+# plt.show()
+
+print('<L> numeric', np.mean(L_numeric), '<L> semi-analy', np.mean(L_analytic), 'True L', L_analytic2)
+
+
+
+
+## Probability density function
+plt.figure()
+plt.hist2d(np.reshape(OM[:,:,0],(-1)) , np.reshape(OM[:,:,1],(-1)) , bins=(80,80) )
+plt.show()
+
+Abcss_x = np.sort(np.reshape(OM[:,:,0], (-1)))
+Abcss_x_trunc = np.round(Abcss_x,2)
+Sorted_abcs_unique, Occurrences = np.unique( Abcss_x_trunc, return_counts=True) 
+plt.figure()
+plt.plot(np.linspace(Sorted_abcs_unique[0], Sorted_abcs_unique[-1], len(Occurrences)), Occurrences/np.sum(Occurrences) )
+plt.show()
+
+#print(np.sum(Occurrences/np.sum(Occurrences)))

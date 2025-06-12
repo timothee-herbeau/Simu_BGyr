@@ -7,7 +7,7 @@ import pandas as pd
 import acces_fnc
 #from sklearn.metrics import mean_squared_error
 
-t_f = 30
+t_f = 10
 t0 = 0
 dt = 5e-3
 N_step  = int((t_f - t0)/dt) 
@@ -18,10 +18,10 @@ Fy = 1
 gamma = 1e-1    # N.s.m-1 coeff frottement
 
 
-Tau_RT_x = 1e-1
-Tau_RT_y = 1e-1  #change les deux de la même façon
+Tau_RT_x = 5e-1
+Tau_RT_y = 5e-1  #change les deux de la même façon
 
-N_traj = 5000
+N_traj = 1000
 
 
 def init_traj_randm(u=u, Fx=Fx, Fy=Fy, N=N_step):
@@ -35,7 +35,7 @@ def init_traj_randm(u=u, Fx=Fx, Fy=Fy, N=N_step):
     #X[1,0] = 1/2
 
     #création de la force:
-    XI = acces_fnc.create_force_2(N, dt, Tau_RT_x, Tau_RT_y, Fx, Fy)
+    XI = acces_fnc.create_force(N, dt, Tau_RT_x, Tau_RT_y, Fx, Fy)
     #print(' Mean Force',np.mean(XI, axis=1) )
 
     return A,X,XI
@@ -85,6 +85,7 @@ timeT = time.time()
 Force = np.zeros((N_traj))
 X2 = np.zeros((N_traj,N_step))
 X_f = np.zeros((N_traj,N_step))
+Var = np.zeros((N_step))
 OMG = np.zeros((N_traj,N_step))
 tab_mean_omega = np.zeros((N_traj))
 for incr in range(N_traj):
@@ -93,13 +94,13 @@ for incr in range(N_traj):
     P_omega, mean_omg, omega = Analyze(X,XI)
     Force[incr] = np.mean(XI[0,:])
 
-    X2[incr,:] = 0.5*(np.power(X[0,:],2)+ np.power(X[1,:],2))
-
+    X2[incr,:] = np.power(X[0,:],2) #*0.5    + 0.5*np.power(X[1,:],2)
+    
     X_f[incr,:] = X[0,:]
     OMG[incr,:len(omega)] = omega
     tab_mean_omega[incr] = mean_omg 
     
-
+Var[:] = np.var(X_f, axis=0)
 X2_mean = np.mean(X2, axis=0)
 X_mean = np.mean(X_f,axis=0)
 #Mean_OMG = np.mean(OMG, axis=0)
@@ -117,10 +118,13 @@ print('Took',time.time()-timeT,'s')
 # plt.hist(tab_mean_omega)
 # plt.show()
 
+Temp = Tau_RT_x* (Fx)**2
+
 plt.figure()
-plt.plot(np.linspace(dt,N_step*dt,N_step-1),exact(np.linspace(dt,N_step*dt,N_step-1), T= Tau_RT_x* (Fx)**2 , tau=Tau_RT_x), label='Analytic <x^2(t)>')
+plt.plot(np.linspace(dt,N_step*dt,N_step-1),exact(np.linspace(dt,N_step*dt,N_step-1), T= Temp , tau=Tau_RT_x), label='Analytic <x^2(t)>')
 plt.plot(np.linspace(0,N_step*dt,N_step),X2_mean, label='Numerical <x^2(t)>')
-Relativ_err = np.abs(np.mean((X2_mean[1:] - exact(np.linspace(dt,N_step*dt,N_step-1), T= Tau_RT_x* (Fx)**2 , tau=Tau_RT_x) )/ exact(np.linspace(dt,N_step*dt,N_step-1), T= Tau_RT_x* (Fx)**2 , tau=Tau_RT_x) ))
+Relativ_err = np.abs(np.mean((X2_mean[1:] - exact(np.linspace(dt,N_step*dt,N_step-1), T= Temp , tau=Tau_RT_x) )/ exact(np.linspace(dt,N_step*dt,N_step-1), T=Temp , tau=Tau_RT_x) ))
+#plt.plot(np.linspace(0,N_step*dt,N_step), Var)
 plt.ylabel("$<x^2(t)>$")
 plt.xlabel('Time t')
 plt.legend()
@@ -129,9 +133,9 @@ plt.show()
 
 
 plt.figure()
-plt.loglog(np.linspace(1*dt,N_step*dt,N_step-1),exact(np.linspace(1*dt,N_step*dt,N_step-1), T= Tau_RT_x* (Fx)**2 , tau=Tau_RT_x), label='Analytic <r^2(t)>')
+plt.loglog(np.linspace(1*dt,N_step*dt,N_step-1),exact(np.linspace(1*dt,N_step*dt,N_step-1), T= Temp , tau=Tau_RT_x), label='Analytic <r^2(t)>')
 plt.loglog(np.linspace(1*dt,N_step*dt,N_step-1),X2_mean[1:], label='Numerical <x^2(t)>')
-Relativ_err = np.abs(np.mean((X2_mean[10:] - exact(np.linspace(10*dt,N_step*dt,N_step-10), T= Tau_RT_x* (Fx)**2 , tau=Tau_RT_x) )/ exact(np.linspace(dt*10,N_step*dt,N_step-10), T= Tau_RT_x* (Fx)**2 , tau=Tau_RT_x) ))
+Relativ_err = np.abs(np.mean((X2_mean[10:] - exact(np.linspace(10*dt,N_step*dt,N_step-10), T= Temp , tau=Tau_RT_x) )/ exact(np.linspace(dt*10,N_step*dt,N_step-10), T= Temp , tau=Tau_RT_x) ))
 plt.ylabel("$<x^2(t)>$")
 plt.xlabel('Time t')
 plt.legend()
@@ -145,7 +149,7 @@ plt.plot(np.linspace(0,N_step*dt,N_step),X_mean, label='Analytic <x^2(t)>')
 plt.show()
 print('moyen', np.mean(X_mean))
 print('force mean tot', np.mean(Force))
-print(X2_mean[-10:],exact(np.linspace(0,N_step*dt,N_step), T= Tau_RT_x* (Fx)**2 , tau=Tau_RT_x)[-10:] )
+print(X2_mean[-10:],exact(np.linspace(0,N_step*dt,N_step), T= Temp , tau=Tau_RT_x)[-10:] )
 
 
 

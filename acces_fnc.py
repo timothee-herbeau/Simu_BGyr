@@ -35,19 +35,22 @@ def create_force(N, dt, Tau_RT_x, Tau_RT_y, Fx, Fy):
     XI = np.zeros((2,N))
     i=0
     direction_x = 2*np.random.randint(2,size=N) -1
-    while i <= N:
+    direction_y = 2*np.random.randint(2,size=N) -1
+
+    while i < N:
         tau_x = np.random.poisson(int(Tau_RT_x/dt))
-        direction_xi = 2*np.random.randint(2,size=1) -1
+        #direction_xi = 2*np.random.randint(2,size=1) -1
         dnx =  int(tau_x)
-        XI[0,i: i + min(dnx,N-i)] = direction_xi * Fx    # np.sqrt(8*Tx/Tau_RT_x) *dt
+        XI[0,i: i + min(dnx,N-i-1)+1] = direction_x[i] * Fx    # np.sqrt(8*Tx/Tau_RT_x) *dt
         #print(i,dnx, direction_x * Fx)
         i += dnx
     #print('Force moy',np.mean(XI[0,:]), np.mean(direction_x))
+
     j=0
-    while j <= N:
-        tau_y, direction_y = np.random.poisson(Tau_RT_y/dt), 2*np.random.randint(2,size=1)-1
-        dny = int(tau_y)
-        XI[1,j: j + min(dny,N-j)] = direction_y * Fy #np.sqrt(8*Ty/Tau_RT_x) *dt
+    while j < N:
+        tau_y = np.random.poisson(int(Tau_RT_y/dt))
+        dny = int(tau_y)+1
+        XI[1,j: j + min(dny,N-j)] = direction_y[j] * Fy #np.sqrt(8*Ty/Tau_RT_x) *dt
         j += dny
     return XI
 
