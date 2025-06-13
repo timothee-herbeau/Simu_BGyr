@@ -31,6 +31,9 @@ def init_traj_randm(u=u, Fx=Fx, Fy=Fy, N=N_step):
     return X,XI
 
 
+
+
+
 @jit(nopython=True)
 def dyna(X,XI,N=N_step, dt=dt):
     #Propagation de la dynamique
