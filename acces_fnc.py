@@ -94,6 +94,19 @@ def omega(X, N_step, dt):
     # plt.show()
     return omega, np.mean(omega[10:]), P_omega
 
+
+def L(X2, Y2,u):
+    return u*(X2 - Y2)
+
+def A(u, tau):  #utile pour le second moment de la position en régime stationnaire
+    return (2 - u**2 + tau)/(2*(1-u**2)*(1+2*tau + (1-u**2)*tau**2))
+def B(u,tau):
+    return u**2 * (1 + tau)/(2*(1-u**2)*(1+2*tau + (1-u**2)*tau**2))
+
+def Var_analy(u, Tau_RT_x, Tau_RT_y, Tx, Ty):
+    return np.array([ A(u,Tau_RT_x)*Tx + B(u,Tau_RT_y)*Ty,  B(u,Tau_RT_x)*Tx + A(u,Tau_RT_y)*Ty ])
+
+
 def coo_h(X, t0,t_f,dt):
     plt.figure()
     plt.plot(np.arange(t0,t_f,dt), X[0,:])

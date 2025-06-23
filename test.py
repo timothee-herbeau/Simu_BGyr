@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.special import gamma
 import matplotlib.pyplot as plt
 
 u = 10
@@ -20,3 +21,8 @@ print(5.2/1.6)
 print(np.array([[0,1,2],[3,4,5]]),np.power(np.array([[0,1,2],[3,4,5]]), 2)   )
 
 print(np.array([[0,1,2],[3,4,5]]), np.mean(np.array([[0,1,2],[3,4,5]]), axis=0))
+
+v, gamma_0 = 1, 0.4
+def P_analy(X):
+    return np.where(np.abs(X)<v, np.power(np.power(v,2) -  np.power(X,2), -1 + 1/gamma_0 )* gamma(0.5 + gamma_0)/((np.power(v,-1+ 2*gamma_0))* gamma(0.5)*gamma(gamma_0)) , -1)      
+print(P_analy(3))
