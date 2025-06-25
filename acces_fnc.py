@@ -106,6 +106,9 @@ def B(u,tau):
 def Var_analy(u, Tau_RT_x, Tau_RT_y, Tx, Ty):
     return np.array([ A(u,Tau_RT_x)*Tx + B(u,Tau_RT_y)*Ty,  B(u,Tau_RT_x)*Tx + A(u,Tau_RT_y)*Ty ])
 
+def L_Pascal(u,Tx,Ty,tau_x, tau_y):
+    return np.array([u* (Tx*(1+2*tau_x)/(1+2*tau_x+(1-u**2)*tau_x**2) - Ty*(1+2*tau_y)/(1+2*tau_x+(1-u**2)*tau_x**2)) ])
+
 
 def coo_h(X, t0,t_f,dt):
     plt.figure()
