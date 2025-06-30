@@ -7,22 +7,22 @@ import pandas as pd
 import acces_fnc
 
 
-t_f = 50
+t_f = 500
 t0 = 0
 dt = 2e-3
 N_step  = int((t_f - t0)/dt) 
 
-u = 0.3
+u = 0.4
 Fx = 1       
 Fy = 2
 
-Tau_RT_x = 1e-1
-Tau_RT_y = 1e-1  
+Tau_RT_x = 3
+Tau_RT_y = 5
 
 Tx = Fx**2 * Tau_RT_x
 Ty = Fy**2 * Tau_RT_y
 
-N_traj = 50
+N_traj = 1000
 
 def init_traj_randm(u=u, Tx=Tx, Ty=Ty, N=N_step, tau_x=Tau_RT_x, tau_y = Tau_RT_y, dt = dt):
     Fx,Fy = np.sqrt(Tx/tau_x), np.sqrt(Ty/tau_y)
@@ -42,7 +42,7 @@ def dyna(X,XI,N=N_step, dt=dt):
         X[:,k] =   X[:,k-1]* (1-dt) + dt*u *X[::-1,k-1] + XI[:,k-1]*dt   #plus rapide pour numba
         
         dx, dy = X[0,k]- X[0,k-1] , X[1,k]- X[1,k-1]
-        L_tot[k-1] =  -dx/dt * X[1,k] + X[0,k]* dy/dt       # x ypoint - y xpoint  : moment cinétique calculé "exactement" à t 
+        L_tot[k-1] =  -dx/dt * X[1,k] + X[0,k]* dy/dt       # x*ypoint - y xpoint  : moment cinétique calculé "exactement" à t 
 
     return X, L_tot
         
@@ -107,9 +107,7 @@ def simulation_launcher(N_traj, N_step, X,XI, u,Tx=Tx,Ty=Ty,tau_x=Tau_RT_x,tau_y
     OMG = np.zeros((N_traj,N_step-1))       #regroupe les valeurs instantanée des Omegas pour chaque trajectoire
     tab_mean_omega = np.zeros((N_traj))     #regroupe le oméga moyen pour chaque trajectoire
 
-
     L_numeric = np.zeros((N_traj,N_step-1))
-
 
     for incr in range(N_traj):
         X,XI = init_traj_randm(u=u, Tx=Tx, Ty=Ty, N=N_step, tau_x=tau_x, tau_y = tau_y, dt = dt)
@@ -130,11 +128,9 @@ def simulation_launcher(N_traj, N_step, X,XI, u,Tx=Tx,Ty=Ty,tau_x=Tau_RT_x,tau_y
     L_analytic_Gleb = np.array([u*(1+1/tau_x)*((Tx/tau_x) - (Ty/tau_y))/((1 + 1/tau_x - u)*(1+ 1/tau_y + u)) ]) #only works for identical tau_y
     L_analytic_Pascal = acces_fnc.L_Pascal(u,Tx=Tx,Ty=Ty,tau_x=tau_x,tau_y=tau_y)
 
-    print('Took',time.time()-timeT,'s')
+    #print('Took',time.time()-timeT,'s')
     return r2_mean,R2_anal,OMG, tab_mean_omega,L_numeric,L_numeric2,L_semi_analytic,L_analytic_Gleb,L_analytic_Pascal
 
-X,XI = init_traj_randm(u=u, Tx=Tx, Ty=Ty, N=N_step, tau_x=Tau_RT_x, tau_y = Tau_RT_y, dt = dt)
-r2_mean,R2_anal,OMG, tab_mean_omega,L_numeric,L_numeric2,L_semi_analytic,L_analytic_Gleb,L_analytic_Pascal = simulation_launcher(N_traj=N_traj,N_step=N_step,X=X,XI=XI,u=u,Tx=Tx,Ty=Ty,tau_x=Tau_RT_x,tau_y=Tau_RT_y)
 
 
 def comparison_L(N_T,u=u,Tx=Tx,Ty=Ty,tau_x=Tau_RT_x,tau_y=Tau_RT_y,dt=dt, N_step=N_step,N_traj = N_traj  ): #changes Tx but same tau 
@@ -148,10 +144,11 @@ def comparison_L(N_T,u=u,Tx=Tx,Ty=Ty,tau_x=Tau_RT_x,tau_y=Tau_RT_y,dt=dt, N_step
         r2_mean,R2_anal,OMG, tab_mean_omega,L_numeric,L_numeric2,L_semi_analytic,L_analytic_Gleb,L_analytic_Pascal = simulation_launcher(N_traj=N_traj,N_step=N_step,X=X,XI=XI,u=u,Tx=TempX[j],Ty=Ty,tau_x=tau_x,tau_y=tau_y,dt=dt)
         Tab_comparatif[j,0] = np.mean(L_numeric)
         Tab_comparatif[j,1] = np.mean(L_semi_analytic)
-        Tab_comparatif[j,2] = L_analytic_Gleb
-        Tab_comparatif[j,3] = L_analytic_Pascal
+        Tab_comparatif[j,2] = np.mean(L_analytic_Gleb)
+        Tab_comparatif[j,3] = np.mean(L_analytic_Pascal)
     for k in range(4):
         plt.plot(TempX-Ty, Tab_comparatif[:,k], label=f'L_{list_L[k]}')
+        plt.xlabel('Tx-Ty_0')
         plt.legend()
     plt.show()
     return 
@@ -174,12 +171,18 @@ def comparison_L_over_tau(N_Tau,u=u,Tx=Tx,Ty=Ty,tau_x=Tau_RT_x,tau_y=Tau_RT_y,dt
         Tab_comparatif[j,3] = L_analytic_Pascal
     for k in range(4):
         plt.plot(Tau_Tab, Tab_comparatif[:,k], label=f'L_{list_L[k]}')
+        plt.xlabel('Tau')
         plt.legend()
     plt.show()
     return 
 
-comparison_L(N_T=5,u=u,Tx=Tx,Ty=Ty,tau_x=Tau_RT_x,tau_y=Tau_RT_y,dt=dt, N_step=N_step, N_traj= N_traj )
-comparison_L_over_tau(N_Tau=5,u=u,Tx=Tx,Ty=Ty,tau_x=Tau_RT_x,tau_y=Tau_RT_y,dt=dt, N_step=N_step, N_traj=N_traj )
+#comparison_L(N_T=5,u=u,Tx=Tx,Ty=Ty,tau_x=Tau_RT_x,tau_y=Tau_RT_y,dt=dt, N_step=N_step, N_traj= N_traj )
+#comparison_L_over_tau(N_Tau=5,u=u,Tx=Tx,Ty=Ty,tau_x=Tau_RT_x,tau_y=Tau_RT_y,dt=dt, N_step=N_step, N_traj=N_traj )
+
+
+
+X,XI = init_traj_randm(u=u, Tx=Tx, Ty=Ty, N=N_step, tau_x=Tau_RT_x, tau_y = Tau_RT_y, dt = dt)
+r2_mean,R2_anal,OMG, tab_mean_omega,L_numeric,L_numeric2,L_semi_analytic,L_analytic_Gleb,L_analytic_Pascal = simulation_launcher(N_traj=N_traj,N_step=N_step,X=X,XI=XI,u=u,Tx=Tx,Ty=Ty,tau_x=Tau_RT_x,tau_y=Tau_RT_y)
 
 plt.figure()
 plt.plot(np.linspace(0,dt*N_step,N_step), r2_mean)
@@ -213,13 +216,17 @@ print('Mean Omega',np.mean(tab_mean_omega))
 range_center = 2
 plt.figure()
 plt.title('Analytic vs numeric L')
-plt.hist(np.reshape(L_numeric,(-1)), label='numeric', alpha=0.6, bins=60, density=1, range=(-range_center,range_center)) # L = xdot y - dotx y
-plt.hist(np.reshape(L_numeric2,(-1)), label='numeric2', alpha=0.6, bins=60, density=1,range=(-range_center,range_center)) #L = omega * r^2
+plt.hist(np.reshape(L_numeric,(-1)), label='instantaneaous L numeric', alpha=0.6, bins=60, density=1, range=(-range_center,range_center)) # L = xdot y - dotx y
+plt.hist(np.reshape(L_numeric2,(-1)), label='L= omega * r^2  numeric2', alpha=0.6, bins=60, density=1,range=(-range_center,range_center)) #L = omega * r^2
+#plt.hist(np.reshape(L_semi_analytic,(-1)), label='semi analytic L=u(X2-Y2) numeric', alpha=0.6, bins=60, density=1, range=(-range_center,range_center)) # 
 plt.hist(L_analytic_Pascal, label='analyticP',alpha=0.7, density=0,range=(-range_center,range_center), bins=100)#) 
 plt.hist(L_analytic_Gleb, label='analyticG',alpha=0.7, density=0,range=(-range_center,range_center), bins=100)#) 
-plt.hist(np.mean(L_numeric),label='Mean L numeric', density = 0 , bins=100, range=(-range_center,range_center))
+plt.hist(np.mean(L_numeric),label='Mean L instantaneaous numeric', density = 0 , bins=100, range=(-range_center,range_center))
+plt.hist(np.mean(L_numeric2),label='Mean L= omega * r^2 numeric', density = 0 , bins=100, range=(-range_center,range_center))
+plt.hist(np.mean(L_numeric),label='Mean L= xdot y - dotx y', density = 0 , bins=100, range=(-range_center,range_center))
+
 # plt.hist(np.reshape(L_semi_analytic,(-1)), label='interm',alpha=0.6, bins=60, density=1)#) 
 plt.legend()
 plt.show()
 
-print('<L> numeric', np.mean(L_numeric), '<L> analGleb', np.mean(L_analytic_Gleb),'<L> anal_Pascal', np.mean(L_analytic_Pascal), 'True L', np.mean(L_semi_analytic))
+print('<L> numeric', np.mean(L_numeric), '<L> analGleb', np.mean(L_analytic_Gleb),'<L> anal_Pascal', np.mean(L_analytic_Pascal), 'semi anal L = omega * r^2', np.mean(L_semi_analytic))

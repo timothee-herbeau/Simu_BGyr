@@ -36,3 +36,5 @@ def J(nu, phi, omega):
 
 alpha = 1-0.1
 print(J(nu=gamma_0/(alpha) -1/2 , phi=100000, omega=15))
+
+print(np.multiply(np.arange(3),np.arange(3)) )

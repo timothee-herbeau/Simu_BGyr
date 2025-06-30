@@ -1,0 +1,146 @@
+#Solving main equation for characteristic function of each kernel. Taking FFT of product of characteristic function, we get probability density
+
+# j'ai modifié l'eq diff 2 elle est temporairement faussée (sauf à u=0)
+# les equation diff supposent un bruit dichotome symmétrique 
+
+import matplotlib.pyplot as plt
+import numpy as np
+import time
+from scipy.special import iv
+from numba import jit
+import pandas as pd
+import acces_fnc
+import time
+from scipy.special import gamma, jv
+from scipy.integrate import solve_ivp
+
+
+t0x,t0y = 0.1, 0.1
+tfx, tfy = 500, 500
+u=0.9 #coupling parameter
+gamma_0 = 1.5 #transition rate
+gamma_0_y = 1.5
+omega_min,omega_max,N_om = 1, 55 ,151 #N_om must be odd so as to comply with ifft rcquirements
+N_add = 15 # number of omega component we add to finish the spectrum
+alpha = 1-u
+vx,vy = 5, 2  #intensity of the random telegraph signal
+
+t_init = time.time()
+
+def f_mapped_om1(t,y,om):
+    return np.array([ y[1], (1 - 2*gamma_0 + u*np.tanh(u/t) - 2*t)*y[1]/np.power(t,2) - y[0]*np.power(vx*om*np.exp(-1/(t)) * np.cosh(u/t)/np.power(t,2) ,2)   ])
+
+def f_mapped_om2(t,y,om): #u/np.tanh(u*t)
+    return np.array([ y[1], (1 - 2*gamma_0 - 2*t + u/np.tanh(u/t))*y[1]/np.power(t,2) - y[0]*np.power( vy*om*np.exp(-1/(t))*np.sinh(u/t) /np.power(t,2) ,2 )   ])
+
+def analytical_solution(u,omega, phi,v):
+    nu = gamma_0/(1-u) - u/(2*(1-u)) - 1/2
+    Z = np.abs(omega)*v/(1-u) * np.exp(-(1-u)/phi) 
+    return    gamma(1+nu)*jv(nu,Z)/np.power(Z/2,nu)
+
+def analytical_solution_tim(u,omega, phi,v):
+    nu = ((2*gamma_0-1)/(1-u) -u )/2
+    #nu = gamma_0/(1-u) - u/(2*(1-u)) - 1/2
+    Z = np.abs(omega)*v/(1-u) * np.exp(-(1-u)/phi) 
+    return    gamma(1+nu)*jv(nu,Z)/np.power(Z/2,nu)
+
+om = np.linspace(-omega_max,omega_max,N_om)  
+print('om is of shape',len(om))
+final_Phi_1 = np.zeros((N_om))
+final_Phi_2 = np.zeros((N_om))
+
+#plt.figure()
+for k in range(len(om)):
+    omg = om[k]
+    sol1 = solve_ivp( f_mapped_om1 ,(t0x,tfx),args=(omg,),y0=np.array([1,0]))
+    final_Phi_1[k] =sol1.y[0,-1] 
+    #print(final_Phi_1[k])
+    sol2 = solve_ivp( f_mapped_om2 ,(t0y,tfy),args=(omg,),y0=np.array([1,0]))
+    final_Phi_2[k] =sol2.y[0,-1] 
+    #print(final_Phi_2[k]) 
+    plt.plot(sol1.t,sol1.y[0,:], label=f'num {omg}') #we have now the value of the caractéristic function at phi infty as a function of omega 
+    plt.scatter(sol1.t,analytical_solution_tim(u, omega=omg,phi=sol1.t, v=vx), label=f'anal {omg}')
+# plt.title('Phi_omega(phi))')
+# plt.xscale('log')
+# plt.legend()
+# plt.show()
+    
+
+print('time',time.time()-t_init)
+
+
+
+
+# plt.show()   
+# plt.figure()
+# plt.title('Phi_infty(omega))')
+# plt.plot(om,final_Phi_1,label='numerical') #we have now the value of the caractéristic function at phi infty as a function of omega 
+# plt.plot(om,analytical_solution_tim(u, om,phi=1e8, v=vx),label='analytical')
+# plt.plot(om,analytical_solution(u, om,phi=1e8, v=vx),label='analytical Gleb')
+# plt.legend()
+# plt.show()
+
+dw = (om[1]-om[0])
+
+extended_phi_1 = np.concatenate((np.zeros((N_add)), final_Phi_1, np.zeros((N_add))))
+final_Phi_reordered_1 = np.zeros((len(extended_phi_1)))      
+final_Phi_reordered_1[len(extended_phi_1)//2 +1:] = extended_phi_1[: len(extended_phi_1)//2]
+final_Phi_reordered_1[:len(extended_phi_1)//2 +1 ] = extended_phi_1[ len(extended_phi_1)//2 : ]
+
+extended_phi_2 = np.concatenate((np.zeros((N_add)), final_Phi_2, np.zeros((N_add))))
+final_Phi_reordered_2 = np.zeros((len(extended_phi_2)))      
+final_Phi_reordered_2[len(extended_phi_2)//2 +1:] = extended_phi_2[: len(extended_phi_2)//2]
+final_Phi_reordered_2[:len(extended_phi_2)//2 +1 ] = extended_phi_2[len(extended_phi_2)//2 : ]
+
+final_Phi_multiplied = np.matmul( np.reshape(final_Phi_reordered_1,(len(final_Phi_reordered_1),-1)) , np.reshape(final_Phi_reordered_2,(-1,len(final_Phi_reordered_1))) )
+
+P = np.fft.fft2(final_Phi_multiplied, norm='forward')
+#print(np.real(P))
+X = np.linspace(-len(P[0,:]) ,len(P[0,:]) , 2*len(P[0,:]))
+x = np.linspace(-len(P[0,:])//2 ,len(P[0,:])//2, len(P[0,:]))
+print(np.shape(P), np.shape(np.array(x)))
+# # def P_analy(X):
+# #     return np.where((np.abs(X)<v)&(np.power(v,2) -  np.power(X,2)!=0),        np.power(np.power(v,2) -  np.power(X,2), gamma_0 - 1 )* gamma(0.5 + gamma_0)/((np.power(v,-1+ 2*gamma_0))* gamma(0.5)*gamma(gamma_0))         , 0)  
+
+# #print('sumP_analytc', 1/(len(final_Phi_reordered_1)*dw),np.sum(P_analy(X*2*np.pi/(len(final_Phi_reordered_1)*dw)))*2*np.pi/(len(final_Phi_reordered_1)*dw), 
+print('computed P norm',np.sum(P[:,:]), 'dw', dw) 
+    
+# plt.figure()
+# plt.title('Phi_infty(omega))')
+# plt.scatter(np.concatenate((np.array([-omega_max - dw*(N_add-j) for j in range(N_add)]),om,np.array([omega_max + dw*j for j in range(N_add)]))),extended_phi_1) #we have now the value of the caractéristic function at phi infty as a function of omega 
+# plt.show()
+
+plt.figure()
+plt.plot(X[::1] , np.concatenate((P[:,:],P[:,:])) ) #10+ len(P)//2
+#plt.plot(X ,P_analy(X*2*np.pi/(len(final_Phi_reordered_1)*dw))*2*np.pi/(len(final_Phi_reordered_1)*dw) )
+plt.title('P(x)')
+plt.show()
+
+# plt.figure()
+# fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
+# ax.plot_surface(x, x, P)#, vmin=Z.min() * 2, cmap=cm.Blues)
+# plt.show()
+
+# Probability density function
+nx,ny = np.shape(P)[0], np.shape(P)[1]
+M = np.zeros((2*nx,2*ny))
+M[:nx,:ny] = P
+M[nx:,ny:] = P
+M[:nx,ny:] = P
+M[nx:,:ny] = P 
+#np.array[(np.reshape(np.real( np.concatenate((P,P,P,P))) , (2*len(P[0,:]),2*len(P[0,:]))  ))] 
+plt.figure()
+plt.imshow(np.real(M[nx//2:nx + nx//2,ny//2:ny+ny//2]))
+#plt.pcolormesh(X,X,np.reshape(np.real( np.concatenate((P,P,P,P))) , (2*len(P[0,:]),2*len(P[0,:]))  ))
+#plt.hist2d( np.array(x), np.array(x) ,weights = P)
+plt.show()
+
+
+fig = plt.figure(figsize=(14,6))
+
+# `ax` is a 3D-aware axis instance because of the projection='3d' keyword argument to add_subplot
+ax = fig.add_subplot(1, 2, 1, projection='3d')
+#print( np.log(np.where(np.real(P)>0,np.real(P),1))) np.log(np.where(np.real(P)>0,np.real(P),1))
+XX, YY = np.meshgrid(x, x)
+p = ax.plot_wireframe(XX, YY, np.where(np.real(M[nx//2:nx + nx//2,ny//2:ny+ny//2])>0,np.real(M[nx//2:nx + nx//2,ny//2:ny+ny//2]),0))#, rstride=4, cstride=4, linewidth=0)
+plt.show()
