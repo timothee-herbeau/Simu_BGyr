@@ -34,23 +34,24 @@ def create_force_2(N, dt, Tau_RT_x, Tau_RT_y, Fx, Fy):
 def create_force(N, dt, Tau_RT_x, Tau_RT_y, Fx, Fy):
     XI = np.zeros((2,N))
     i=0
+
     direction_x = 2*np.random.randint(2,size=N) -1
     direction_y = 2*np.random.randint(2,size=N) -1
 
     while i < N:
-        tau_x = np.random.poisson(int(Tau_RT_x/dt))
+        tau_x = np.random.exponential(Tau_RT_x)
         #direction_xi = 2*np.random.randint(2,size=1) -1
-        dnx =  int(tau_x)
-        XI[0,i: i + min(dnx,N-i-1)+1] = direction_x[i] * Fx    # np.sqrt(8*Tx/Tau_RT_x) *dt
+        dnx =  int(tau_x/dt)
+        XI[0,i: i + min(dnx,N-i-1)] = (2*np.random.randint(2) -1) * Fx    # np.sqrt(8*Tx/Tau_RT_x) *dt
         #print(i,dnx, direction_x * Fx)
         i += dnx
     #print('Force moy',np.mean(XI[0,:]), np.mean(direction_x))
 
     j=0
     while j < N:
-        tau_y = np.random.poisson(int(Tau_RT_y/dt))
-        dny = int(tau_y)+1
-        XI[1,j: j + min(dny,N-j)] = direction_y[j] * Fy #np.sqrt(8*Ty/Tau_RT_x) *dt
+        tau_y = np.random.exponential(Tau_RT_y)
+        dny = int(tau_y/dt)
+        XI[1,j: j + min(dny,N-j)] = (2*np.random.randint(2) -1)  * Fy #np.sqrt(8*Ty/Tau_RT_x) *dt
         j += dny
     return XI
 
@@ -99,15 +100,15 @@ def L(X2, Y2,u):
     return u*(X2 - Y2)
 
 def A(u, tau):  #utile pour le second moment de la position en régime stationnaire
-    return (2 - u**2 + tau)/(2*(1-u**2)*(1+2*tau + (1-u**2)*tau**2))
+    return (2 - u**2 + 2*tau)/(2*(1-u**2)*(1+2*tau + (1-u**2)*tau**2))
 def B(u,tau):
-    return u**2 * (1 + tau)/(2*(1-u**2)*(1+2*tau + (1-u**2)*tau**2))
+    return u**2 * (1 + 2*tau)/(2*(1-u**2)*(1+2*tau + (1-u**2)*tau**2))
 
 def Var_analy(u, Tau_RT_x, Tau_RT_y, Tx, Ty):
     return np.array([ A(u,Tau_RT_x)*Tx + B(u,Tau_RT_y)*Ty,  B(u,Tau_RT_x)*Tx + A(u,Tau_RT_y)*Ty ])
 
 def L_Pascal(u,Tx,Ty,tau_x, tau_y):
-    return np.array([u* (Tx*(1+2*tau_x)/(1+2*tau_x+(1-u**2)*tau_x**2) - Ty*(1+2*tau_y)/(1+2*tau_x+(1-u**2)*tau_x**2)) ])
+    return np.array([u* (Tx*(1)/(1+2*tau_x+(1-u**2)*tau_x**2) - Ty*(1)/(1+2*tau_x+(1-u**2)*tau_x**2)) ])
 
 
 def coo_h(X, t0,t_f,dt):
