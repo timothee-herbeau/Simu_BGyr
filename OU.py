@@ -9,7 +9,7 @@ import acces_fnc
 
 t_f = 150
 t0 = 0
-dt = 5e-3
+dt = 1e-2
 N_step  = int((t_f - t0)/dt) 
 
 
@@ -205,6 +205,36 @@ def comparison_L_over_u(N_u,u=u,Tx=Tx,Ty=Ty,tau_x=Tau_RT_x,tau_y=Tau_RT_y,dt=dt,
 #comparison_L_over_tau(N_Tau=5,u=u,Tx=Tx,Ty=Ty,tau_x=Tau_RT_x,tau_y=Tau_RT_y,dt=dt, N_step=N_step, N_traj=N_traj )
 #comparison_L_over_u(N_u=7,u=u,Tx=Tx,Ty=Ty,tau_x=Tau_RT_x,tau_y=Tau_RT_y,dt=dt, N_step=N_step, N_traj= N_traj )
 
+
+
+
+##comp second moment
+##
+
+def X2_analytic(Tx,Ty,taux,tauy,u):
+    return Tx*(2-np.power(u,2)+2*taux)/(2*(1-np.power(u,2))*(1+2*taux+np.power(taux,2)*(1-np.power(u,2)))) + Ty*(1+2*tauy)*np.power(u,2)/(2*(1-np.power(u,2))*(1+2*tauy+np.power(tauy,2)*(1-np.power(u,2))))
+
+def comparison_X2_over_u(N_u,u=u,Tx=Tx,Ty=Ty,tau_x=Tau_RT_x,tau_y=Tau_RT_y,dt=dt, N_step=N_step, N_traj = N_traj ): #changes tau (but both identical) at fixed Tx and Ty
+    du = 0.3
+    u_Tab = np.array([-0.9 + j*du for j in range(N_u)])
+    Tab_comparatif = np.zeros((N_u, 4))
+    x2 = np.array((N_u))
+    plt.figure()
+    for j in range(N_u):
+        u_j = u_Tab[j]
+        X,XI = init_traj_randm(u=u_j, Tx=Tx, Ty=Ty, N=N_step, tau_x=tau_x, tau_y = tau_y, dt = dt)
+        r2_mean,R2_anal,OMG, tab_mean_omega,L_numeric,L_numeric2,L_semi_analytic,L_analytic_Gleb,L_analytic_Pascal,X2_ANAL,X2,OM = simulation_launcher(N_traj=N_traj,N_step=N_step,X=X,XI=XI,u=u_j,Tx=Tx,Ty=Ty,tau_x=tau_x,tau_y=tau_y,dt=dt)
+        x2[j] = r2_mean
+        plt.plot(u_Tab,X2_analytic(Tx,Ty,tau_x,tau_y,u_Tab), label='Analytic ')
+        plt.plot(u_Tab, x2, label=f'Experimental')
+        plt.xlabel('u')
+        plt.legend()
+    plt.show()
+    return 
+
+comparison_X2_over_u(N_u=2,u=u,Tx=Tx,Ty=Ty,tau_x=Tau_RT_x,tau_y=Tau_RT_y,dt=dt, N_step=N_step, N_traj= N_traj)
+
+
 def one_try(u=u, Tx=Tx, Ty=Ty, N=N_step, tau_x=Tau_RT_x, tau_y = Tau_RT_y, dt = dt):
     X,XI = init_traj_randm(u=u, Tx=Tx, Ty=Ty, N=N_step, tau_x=Tau_RT_x, tau_y = Tau_RT_y, dt = dt)
     r2_mean,R2_anal,OMG, tab_mean_omega,L_numeric,L_numeric2,L_semi_analytic,L_analytic_Gleb,L_analytic_Pascal,X2_analytic,X2,OM = simulation_launcher(N_traj=N_traj,N_step=N_step,X=X,XI=XI,u=u,Tx=Tx,Ty=Ty,tau_x=Tau_RT_x,tau_y=Tau_RT_y)
@@ -372,4 +402,4 @@ def chaos_transition(N_gamma,u=u,Fx=Fx,Fy=Fy,dt=dt, N_step=N_step, N_traj = N_tr
     return
 
 
-chaos_transition(20,u=0.2,Fx=1,Fy=3,dt=dt, N_step=N_step, N_traj = 300 )
+#chaos_transition(20,u=0.2,Fx=1,Fy=3,dt=dt, N_step=N_step, N_traj = 300 )

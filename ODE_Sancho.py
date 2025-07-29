@@ -2,6 +2,7 @@
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import time
 from scipy.special import iv
 from numba import jit
@@ -12,13 +13,13 @@ from scipy.special import gamma, jv
 from scipy.integrate import solve_ivp
 
 t0=0.01
-tf=200
+tf=1000
 u=0.0  #coupling parameter
 gamma_0 = 1.5 #transition rate
-omega_min,omega_max,N_om = 0, 20 ,191 #N_om must be odd so as to comply with fft rcquirements
+omega_min,omega_max,N_om = 0, 50 ,251 #N_om must be odd so as to comply with fft rcquirements
 N_add = 25 # number of omega component we add to finish the spectrum
 alpha = 1-u
-v=5   #intensity of the random telegraph signal
+v=3  #intensity of the random telegraph signal
 
 t_init = time.time()
 
@@ -118,3 +119,34 @@ def several_gamma(N_g,u=u,omega_max=omega_max, N_om =N_om,N_add=N_add):
     # plt.scatter(np.concatenate((np.array([-omega_max - dw*(N_add-j) for j in range(N_add)]),om,np.array([omega_max + dw*j for j in range(N_add)]))),extended_phi) #we have now the value of the caractéristic function at phi infty as a function of omega 
     # plt.show()
 several_gamma(N_g=5)
+
+####analyse Sancho
+
+def analyse_Sancho():
+    df = pd.read_csv('P_x.csv')
+
+    P_forg = np.array([df])[0,:,1:]
+    #print(np.shape(P_forg))
+    N_g = np.shape(P_forg)[0]
+    #print(N_g)
+    plt.figure()
+    for k in range(N_g):
+        tab_g = np.linspace(0.5,1.4,N_g)
+   
+        P = P_forg[k,1:]
+        X = np.linspace(-len(P) ,len(P) , 2*len(P))
+        dw =  P_forg[k,0] #2*omega_max/N_om
+        l = N_om + 2*N_add
+        Ptilde = np.where(np.concatenate((P[::1],P))>0,np.concatenate((P[::1],P)), 0 )
+        Xtilde = np.linspace(-len(Ptilde)//2,len(Ptilde)//2,len(Ptilde)) 
+        plt.scatter(Xtilde[len(Xtilde)//2-50:len(Xtilde)//2+50], Ptilde[len(Xtilde)//2-50:len(Xtilde)//2+50] ,label= f'Solved Probability at gamma = {np.round(tab_g[k],2)} ')
+        #plt.scatter(X,np.concatenate((P,P)))
+        # with MSE={np.round( MSE(P_analy( X*2*np.pi/(l*dw) , gamma_0=tab_g[k])*2*np.pi/(l*dw), np.where(np.concatenate((P[::1],P))>0,np.concatenate((P[::1],P)), 0 ))   ,7)} ',marker = 'x' )
+        plt.plot(X ,P_analy( X*2*np.pi/(l*dw) , gamma_0=tab_g[k])*2*np.pi/(l*dw), label=f"Sancho's 1D probability at gamma = {np.round(tab_g[k],2)}" )
+        #print('sumP_analytc', 1/(len(final_Phi_reordered)*dw),np.sum(P_analy(X*2*np.pi/(len(final_Phi_reordered)*dw)))*2*np.pi/(len(final_Phi_reordered)*dw), 'computed P norm',np.sum(P), 'dw', dw) 
+    plt.legend()
+    plt.yscale('log')
+    plt.title(r'$\mathbb{P}(x)$ in uncoupled case')
+    plt.show()
+    return 
+#analyse_Sancho()
