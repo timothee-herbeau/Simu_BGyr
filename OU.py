@@ -356,7 +356,6 @@ def phase_transition_gamma(N_gamma,u=u,Fx=Fx,Fy=Fy,dt=dt, N_step=N_step, N_traj 
     print(np.round(time.time()-t0,1),'seconds',)
     plt.legend()
     plt.show()
-
     return
 
 #phase_transition_gamma(6,u=0.1,Fx=1,Fy=2,dt=dt, N_step=N_step, N_traj = 300 )
